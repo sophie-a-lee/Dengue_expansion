@@ -45,12 +45,12 @@ shp_parent <- left_join(shp, parent_conv,
 
 ## Load region & state shapefiles for maps
 shp_region <- read_region() %>%
-  mutate(region_name = recode(name_region,
-                              "Centro Oeste" = "Centre-West",
-                              "Nordeste" = "Northeast",
-                              "Norte" = "North",
-                              "Sudeste" = "Southeast",
-                              "Sul" = "South"))
+  mutate(region_name = recode(code_region,
+                              `5` = "Centre-West",
+                              `1` = "North",
+                              `2` = "Northeast",
+                              `3` = "Southeast",
+                              `4` = "South"))
 
 shp_state <- read_state()
 
