@@ -16,11 +16,11 @@ df_month <- fread("data/dir_month_region.csv")
 
 
 ## Yearly data 
-df_year <- fread("data/dengue_year.csv")
+df_year <- fread("data/df_model.csv")
 
 
 ## Monthly climate state data
-df_tmean <- fread("data/tmean_month_state.csv",encoding = "Latin-1")
+df_tmean <- fread("data/tmean_month_state.csv", encoding = "Latin-1")
 
 
 ## Shapefile
@@ -40,7 +40,8 @@ shp_parent <- left_join(shp, parent_conv,
   ungroup() %>%
   rename(municip_code_ibge = municip_parent_code,
          municip_name = municip_parent_name) %>%
-  mutate(municip_code = as.numeric(substr(municip_code_ibge, 1, 6)))
+  mutate(municip_code = as.numeric(substr(municip_code_ibge, 1, 6)),
+         area_sqkm = as.numeric(st_area(.)/10^6))
 
 
 ## Load region & state shapefiles for maps
@@ -73,7 +74,7 @@ region_col <- c("#ef476f", "#FFBA08", "#06d6a0", "#118ab2", "#073b4c")
 connect_cols <- c("#eaac8b", "#e56b6f", "#b56576", "#6d597a", "#355070")
 
 
-#### Maps showing regions and state (Figure 1) ####
+#### Maps showing regions and state (Figure S1) ####
 region_map <- ggplot(data = shp_region) +
   geom_sf(aes(fill = region_name), lwd = .05) +
   scale_fill_manual(values = region_col) +
@@ -95,7 +96,7 @@ ggsave(state_map, filename = "output/state_map.png")
 
 
 #### Climate plots ####
-## State monthly tmean geofacet  (Figure S1)
+## State monthly tmean geofacet  (Figure S2)
 df_tmean_grid <- df_tmean %>%
   full_join(., grid_br, by = c("state_code" = "code_num")) 
 
@@ -123,12 +124,12 @@ ggsave(tmean_heat, filename = "output/tmean_heat.png",
        height = 20, width = 20)
 
 
-## Number of months suitable for transmission (Figure S2)
+## Number of months suitable for transmission (Figure S3)
 df_suitable <- df_year %>%
   mutate(decade = factor(ifelse(year %in% 2001:2010, "2001 - 2010", 
                                 ifelse(year %in% 2011:2020, "2011 - 2020", NA)))) %>%
   group_by(municip_code_ibge, decade) %>%
-  summarise(months_suitable = mean(months_suitable.era)) %>%
+  summarise(months_suitable = mean(months_suitable.both)) %>%
   ungroup() %>%
   left_join(., shp_parent, by = "municip_code_ibge") %>%
   st_as_sf()
@@ -175,7 +176,7 @@ ggsave(suitable_diff, filename = "output/era_suit_diff.png")
 
 
 #### Census plots ####
-## Urbanisation maps (Figure S3)
+## Urbanisation maps (Figure S4)
 df_census <- df_year[df_year$year == 2010,] %>%
   left_join(., shp_parent, by = c("municip_code_ibge", "municip_code")) %>%
   mutate(regic07 = factor(level07_acpnum, levels = 1:5,
@@ -219,7 +220,7 @@ ggsave(urban_maps, filename = "output/urban_decade.png",
        height = 5, width = 10)
 
 
-## Urban vs basic services scatterplots (Figure S4)
+## Urban vs basic services scatterplots (Figure S5)
 # Urbanisation vs. piped water
 urban_water <- ggplot(data = df_census) +
   geom_point(aes(x = urban10, y = water_network, colour = region_name)) + 
@@ -273,7 +274,7 @@ regic18_map <- ggplot(data = df_census) +
 ggsave(regic18_map, filename = "output/regic18_map.png")
 
 
-## Histograms of % municipalities in each level per region (Figure S5)
+## Histograms of % municipalities in each level per region (Figure S6)
 df_regic07_perc <- st_drop_geometry(df_census) %>%
   group_by(region_name, regic07) %>%
   summarise(regic07_n = n()) %>%
@@ -315,7 +316,9 @@ ggsave(regic_hist, filename = "output/regic_hist.png",
        height = 5, width = 15)
 
 
-## Raincloud plots REGIC vs census variables (Figure S6)
+
+
+## Raincloud plots REGIC vs census variables (Figure S7)
 # Urbanisation
 regic_urb <- ggplot(df_census, aes(x = regic18, y = urban10, fill = regic18)) +
   stat_halfeye(adjust = .5,
@@ -383,8 +386,36 @@ ggsave(regic_refuse, filename = "output/regic_refuse_rain.png",
        width = 15, height = 10)
 
 
+#### REGIC tables ####
+## Basic summaries of each level (Table S1)
+df_regic07 <- df_year[df_year$year == 2007,] %>%
+  mutate(regic07 = factor(level07_acpnum, levels = 1:5,
+                          labels = c("Metropolis",
+                                     "Regional capital",
+                                     "Sub-regional centre",
+                                     "Zone centre",
+                                     "Local centre")))
+
+
+df_regic18 <- df_year[df_year$year == 2018,] %>%
+  mutate(regic18 = factor(level18_num, levels = 1:5,
+                          labels = c("Metropolis",
+                                     "Regional capital",
+                                     "Sub-regional centre",
+                                     "Zone centre",
+                                     "Local centre")))
+
+
+# By region
+addmargins(table(df_regic07$region_name, df_regic07$regic07))
+
+
+addmargins(table(df_regic18$region_name, df_regic18$regic18))
+
+
+
 #### Dengue case exploratory plots ####
-## Regional DIR timeplot (Figure 5)
+## Regional DIR timeplot (Figure 4)
 df_region_dir <- df_month %>%
   group_by(region_name, time) %>%
   summarise(dengue_total = sum(dengue_cases), 
@@ -426,7 +457,7 @@ ggsave(region_line_comp, filename = "output/region_dir_inset.png",
 
 
 #### Outbreak plots ####
-## Number of years with outbreak (Figure 4)
+## Number of years with outbreak (Figure 1)
 df_permanence <- df_year %>%
   mutate(DIR_year = (dengue_year/population)*10^5,
          outbreak = ifelse(DIR_year >= 300, 1, 0)) %>%
@@ -456,7 +487,7 @@ ggsave(number_outbreaks, filename = "output/number_outbreaks.png",
        height = 10, width = 10)
 
 
-## Percentage of municipalities per year experiencing outbreaks (Figure S6)
+## Percentage of municipalities per year experiencing outbreaks (Figure S8)
 municip_region <- st_drop_geometry(df_census) %>%
   group_by(region_name) %>%
   summarise(n_municip = n()) 
@@ -499,7 +530,7 @@ ggsave(perc_region_inset, filename = "output/region_perc_inset.png",
        height = 5, width = 10)
 
 
-## Year of first outbreak (Figure 6)
+## Year of first outbreak (Figure 5)
 df_outbreak <- df_year %>%
   mutate(DIR_year = (dengue_year/population)*10^5) %>%
   filter(DIR_year >= 300) %>%
@@ -517,7 +548,7 @@ df_outbreak <- df_outbreak[!duplicated(df_outbreak$municip_code_ibge),
   st_as_sf()
 
 
-# First outbreak 2001 - 2020
+# First outbreak 2001 - 2020 
 first_outbreak20 <- ggplot(data = df_outbreak) + 
   geom_sf(aes(fill = first_fix, colour = ""), lwd = .05) +
   scale_fill_gradient_tableau("Purple", na.value = "grey",
