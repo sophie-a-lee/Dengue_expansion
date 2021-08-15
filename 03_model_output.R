@@ -468,6 +468,27 @@ regic_diff_med_map <- ggplot(data = full_cov_comp_av) +
 ggsave(regic_diff_med_map, filename = "output/regic_diff_av.png")
 
 
+## Number of municipalities with shrinkage to 0 
+# Full vs base model
+sum(beta_full_comp_av$diff_med <0)/
+  length(unique(beta_full_comp_av$municip_code_ibge)) 
+
+# Climate vs base
+sum(full_cov_comp_av$clim_med < 0)/
+  length(unique(full_cov_comp_av$municip_code_ibge)) * 100 # 91.16%
+
+#  Prior vs base
+sum(full_cov_comp_av$prior_med < 0)/
+  length(unique(full_cov_comp_av$municip_code_ibge)) * 100 # 94.28
+
+# Urbanisation vs base
+sum(full_cov_comp_av$urb_med < 0)/
+  length(unique(full_cov_comp_av$municip_code_ibge)) * 100 # 57.50%
+
+# REGIC vs base
+sum(full_cov_comp_av$regic_med < 0)/
+  length(unique(full_cov_comp_av$municip_code_ibge)) * 100 # 45.08%
+
 
 #### Obtain predictions of the probability of an outbreak ####
 ## Use linear prediction matrix and parameter simulations to estimate posterior mean
@@ -499,6 +520,24 @@ pred_year_map <- ggplot(data = predictions) +
 
 
 ggsave(pred_year_map, filename = "output/pred_year_maps.png")
+
+
+#### Model checking using the ROC curve ####
+roc_obj <- roc(predictions$outbreak_obs, predictions$prob_pred,
+               auc = T, ci = T, plot = T)
+
+## Plot ROC curve (Figure S9) ##
+roc_curve <- ggroc(roc_obj) +
+  geom_abline(intercept = 1, slope = 1, linetype = "dashed") +
+  labs(x = "True negative rate", y = "True positive rate") +
+  theme_light()
+
+ggsave(roc_curve, filename = "output/ROC_curve.png")
+
+
+## Calculate area under the ROC  curve (with confidence interval)
+auc(roc_obj) 
+ci.auc(roc_obj)
 
 
 ## Plot average probability 2001 - 2010 vs 2011 - 2020 
