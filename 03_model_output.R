@@ -6,7 +6,8 @@
 
 
 #### Load packages ####
-pacman::p_load(tidyverse, data.table, sf, geobr, mgcv, mgcViz, cowplot)
+pacman::p_load(tidyverse, data.table, sf, geobr, mgcv, mgcViz, cowplot,
+               pROC)
 
 # Run models
 # source("02_model_fitting.R")
@@ -19,19 +20,7 @@ df_year <- fread("data/df_model.csv")
 df_model <- df_year %>%
   mutate(# Rearrange REGIC to set local centre as reference
     regic07_relevel = -level07_acpnum + 6,
-    regic07 = factor(regic07_relevel, levels = 1:5,
-                     labels = c("Local centre",
-                                "Zone centre",
-                                "Sub-regional centre",
-                                "Regional capital",
-                                "Metropolis")),
     regic18_relevel = -level18_num + 6,
-    regic18 = factor(regic18_relevel, levels = 1:5,
-                     labels = c("Local centre",
-                                "Zone centre",
-                                "Sub-regional centre",
-                                "Regional capital",
-                                "Metropolis")),
     regic_comb = factor(ifelse(year %in% 2001:2010, regic07_relevel, 
                                regic18_relevel),
                         levels = 1:5,
@@ -110,7 +99,7 @@ betas_aeg <- rmvn(n.sims, coef(model_aeg), model_aeg$Vp)
 betas_outbreak <- rmvn(n.sims, coef(model_outbreak), model_outbreak$Vp)
 
 
-## Plot betas + 95% CI
+## Estimate beta mean and 95% CI (Table 1 & Table S2)
 beta_ci <- function(model, betas) {
   beta_ci <- as_tibble(betas) 
   names(beta_ci) <- gsub("[[:punct:][:blank:]]+","", names(model$coefficients))
@@ -177,89 +166,14 @@ beta_plot_full <- ggplot(data = beta_ci_full, aes(Covariate)) +
 ggsave(beta_plot_full, filename = "output/beta_ci_full.png")
 
 
-# Outbreak > 100
+# Medium risk model (outbreak > 100)
 beta_ci_full100 <- beta_ci(model_full100, betas_full100)
 
-# beta_plot_full100 <- ggplot(data = beta_ci_full100, aes(Covariate)) +
-#   geom_hline(yintercept = 1, linetype = "dashed", colour = "grey", size = 0.5) +
-#   geom_point(aes(x = Covariate, y = Mean, colour = Covariate), shape = 16, 
-#              size = 2, position = position_dodge(width = 0.5)) +
-#   geom_linerange(aes(ymin = LCI, ymax = UCI, colour = Covariate), lwd = 1,
-#                  position = position_dodge(width = 0.5)) +
-#   scale_x_discrete(name = "Model covariate",
-#                    labels = c("Months suitable", "Prior outbreak: Yes", "Metropolis", "Regional capital",
-#                               "Sub-regional centre", "Zone centre", "Urbanisation")) +
-#   scale_colour_manual(values = c("#ff0054", "#390099", rep("#9e0059", 4), "#197278")) +
-#   coord_flip() + 
-#   scale_y_continuous(name = "Coefficient estimate (aOR)",
-#                      position = "right",
-#                      expand = c(0,0), limits = c(1, 4)) +
-#   theme_classic() +
-#   theme(plot.margin = unit(c(1,1,1,1),"cm"),
-#         axis.line.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.title = element_text(size = 20),
-#         axis.text = element_text(size = 15),
-#         legend.position = "None")  
-# 
-# ggsave(beta_plot_full100, filename = "output/beta_ci_full100.png")
-
-
-# Using aegypti boundary
+# Aegypti model (using different climate suitability definition)
 beta_ci_aeg <- beta_ci(model_aeg, betas_aeg)
 
-# beta_plot_aeg <- ggplot(data = beta_ci_aeg, aes(Covariate)) +
-#   geom_hline(yintercept = 1, linetype = "dashed", colour = "grey", size = 0.5) +
-#   geom_point(aes(x = Covariate, y = Mean, colour = Covariate), shape = 16, 
-#              size = 2, position = position_dodge(width = 0.5)) +
-#   geom_linerange(aes(ymin = LCI, ymax = UCI, colour = Covariate), lwd = 1,
-#                  position = position_dodge(width = 0.5)) +
-#   scale_x_discrete(name = "Model covariate",
-#                    labels = c("Months suitable", "Prior outbreak: Yes", "Metropolis", "Regional capital",
-#                               "Sub-regional centre", "Zone centre", "Urbanisation")) +
-#   scale_colour_manual(values = c("#ff0054", "#390099", rep("#9e0059", 4), "#197278")) +
-#   coord_flip() + 
-#   scale_y_continuous(name = "Coefficient estimate (aOR)",
-#                      position = "right",
-#                      expand = c(0,0), limits = c(1, 4)) +
-#   theme_classic() +
-#   theme(plot.margin = unit(c(1,1,1,1),"cm"),
-#         axis.line.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.title = element_text(size = 20),
-#         axis.text = element_text(size = 15),
-#         legend.position = "None")  
-# 
-# ggsave(beta_plot_aeg, filename = "output/beta_ci_aeg.png")
-
-
-# Using prior outbreak form previous year
+# Prior outbreak model (considering only previous year)
 beta_ci_outbreak <- beta_ci(model_outbreak, betas_outbreak)
-
-# beta_plot_outbreak <- ggplot(data = beta_ci_outbreak, aes(Covariate)) +
-#   geom_hline(yintercept = 1, linetype = "dashed", colour = "grey", size = 0.5) +
-#   geom_point(aes(x = Covariate, y = Mean, colour = Covariate), shape = 16, 
-#              size = 2, position = position_dodge(width = 0.5)) +
-#   geom_linerange(aes(ymin = LCI, ymax = UCI, colour = Covariate), lwd = 1,
-#                  position = position_dodge(width = 0.5)) +
-#   scale_x_discrete(name = "Model covariate",
-#                    labels = c("Months suitable", "Prior outbreak: Yes", "Metropolis", "Regional capital",
-#                               "Sub-regional centre", "Zone centre", "Urbanisation")) +
-#   scale_colour_manual(values = c("#ff0054", "#390099", rep("#9e0059", 4), "#197278")) +
-#   coord_flip() + 
-#   scale_y_continuous(name = "Coefficient estimate (aOR)",
-#                      position = "right",
-#                      expand = c(0,0), limits = c(1, 4.5)) +
-#   theme_classic() +
-#   theme(plot.margin = unit(c(1,1,1,1),"cm"),
-#         axis.line.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.title = element_text(size = 20),
-#         axis.text = element_text(size = 15),
-#         legend.position = "None")  
-# 
-# ggsave(beta_plot_outbreak, filename = "output/beta_ci_outbreak.png")
-
 
 
 #### Plot smooth functions ####
@@ -351,7 +265,6 @@ base_full_diff.uq <- apply(base_full_diff, 1, quantile, .75)
 
 ## Compare baseline and final models, plot absolute differences (Figure 8)
 # (if final model is better, would expect reduction in absolute values/shrinkage to 0)
-# df_model$smooth_absdiff <- abs(df_model$smooth_final) - abs(df_model$smooth_base)
 df_model$smooth_absdiff <- base_full_diff.med
 
 ## Join to map and plot differences per year
@@ -395,7 +308,7 @@ ggsave(base_full_med, file = "output/base_full_med.png")
 # Urbanisation
 smooth_urb <- smooth_estimates(model_urb, df_model)
 # df_model$urb_full.diff <- abs(smooth_final) - abs(smooth_urb)
-urb_full_diff <- abs(smooth_final) - abs(smooth_urb)
+urb_full_diff <- abs(smooth_urb) - abs(smooth_base)
 
 urb_full_diff.med <- apply(urb_full_diff, 1, median)
 urb_full_diff.lq <- apply(urb_full_diff, 1, quantile, .25)
@@ -403,10 +316,11 @@ urb_full_diff.uq <- apply(urb_full_diff, 1, quantile, .75)
 
 df_model$urb_full.diff <- urb_full_diff.med
 
+
 # Prior outbreak
 smooth_prior <- smooth_estimates(model_prior, df_model)
 
-prior_full_diff <- abs(smooth_final) - abs(smooth_prior)
+prior_full_diff <- abs(smooth_prior) - abs(smooth_base)
 
 prior_full_diff.med <- apply(prior_full_diff, 1, median)
 prior_full_diff.lq <- apply(prior_full_diff, 1, quantile, .25)
@@ -414,10 +328,11 @@ prior_full_diff.uq <- apply(prior_full_diff, 1, quantile, .75)
 
 df_model$prior_full.diff <- prior_full_diff.med
 
+
 # Connectivity
 smooth_regic <- smooth_estimates(model_regic, df_model)
 
-regic_full_diff <- abs(smooth_final) - abs(smooth_regic)
+regic_full_diff <- abs(smooth_regic) - abs(smooth_base)
 
 regic_full_diff.med <- apply(regic_full_diff, 1, median)
 regic_full_diff.lq <- apply(regic_full_diff, 1, quantile, .25)
@@ -425,10 +340,11 @@ regic_full_diff.uq <- apply(regic_full_diff, 1, quantile, .75)
 
 df_model$regic_full.diff <- regic_full_diff.med
 
+
 # Number of months suitable
 smooth_clim <- smooth_estimates(model_clim, df_model)
 
-clim_full_diff <- abs(smooth_final) - abs(smooth_clim)
+clim_full_diff <- abs(smooth_clim) - abs(smooth_base)
 
 clim_full_diff.med <- apply(clim_full_diff, 1, median)
 clim_full_diff.lq <- apply(clim_full_diff, 1, quantile, .25)
@@ -468,17 +384,7 @@ base_full_comp <- left_join(df_model, shp_parent, by = "municip_code_ibge") %>%
 #   ggsave(base_full_map, 
 #          filename = paste0("output/full_clim_comp", i, ".png"))
 # }
-
-## Plot 2020 difference for climate (Figure S9)
-clim_diff_20 <- ggplot(data = base_full_comp[base_full_comp$year == 2020,]) +
-      geom_sf(aes(fill = clim_full.diff), lwd = .05) +
-      scale_fill_gradient2(name = "Difference in\nsmooth terms", low = "#4d9221",
-                           mid = "white", high = "#c51b7d", midpoint = 0) +
-      expand_limits(fill = c(-3, 3)) +
-      theme_void()
-
-
-ggsave(clim_diff_20, filename = "output/clim_diff20.png")
+# 
 # 
 # for(i in min(base_full_comp$year):max(base_full_comp$year)) {
 #   base_full_map <- ggplot(data = base_full_comp[base_full_comp$year == i,]) +
@@ -492,6 +398,7 @@ ggsave(clim_diff_20, filename = "output/clim_diff20.png")
 #   ggsave(base_full_map, 
 #          filename = paste0("output/full_regic_comp", i, ".png"))
 # }
+# 
 # 
 # for(i in min(base_full_comp$year):max(base_full_comp$year)) {
 #   base_full_map <- ggplot(data = base_full_comp[base_full_comp$year == i,]) +

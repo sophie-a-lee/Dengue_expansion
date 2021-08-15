@@ -19,19 +19,7 @@ df_year <- fread("data/df_model.csv")
 df_model <- df_year %>%
   mutate(# Rearrange REGIC to set local centre as reference
          regic07_relevel = -level07_acpnum + 6,
-         regic07 = factor(regic07_relevel, levels = 1:5,
-                          labels = c("Local centre",
-                                     "Zone centre",
-                                     "Sub-regional centre",
-                                     "Regional capital",
-                                     "Metropolis")),
          regic18_relevel = -level18_num + 6,
-         regic18 = factor(regic18_relevel, levels = 1:5,
-                          labels = c("Local centre",
-                                     "Zone centre",
-                                     "Sub-regional centre",
-                                     "Regional capital",
-                                     "Metropolis")),
          regic_comb = factor(ifelse(year %in% 2001:2010, regic07_relevel, 
                                     regic18_relevel),
                              levels = 1:5,
@@ -95,6 +83,7 @@ model_outbreak <- bam(outbreak ~ s(lon, lat, k = 400) + s(year, k = 10) +
 # gam.check(model_outbreak)
 # saveRDS(model_outbreak, file = "output/model_outbreak.rds")
 
+
 #### Fit outbreak100 model (sensitivity analysis) ####
 model_full100 <- bam(outbreak100 ~ s(lon, lat, k = 400) + s(year, k = 10) + 
                        ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
@@ -106,19 +95,19 @@ model_full100 <- bam(outbreak100 ~ s(lon, lat, k = 400) + s(year, k = 10) +
 # saveRDS(model_full100, file = "output/model_full100.rds")
 
 
-#### Remove each covariate in turn (sensitivity analysis) ####
+#### Add each covariate in turn (sensitivity analysis) ####
 ## Months suitable
 model_clim <- bam(outbreak ~ s(lon, lat, k = 400) + s(year, k = 10) + 
-                       ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
-                       urban_prpn + region_comb + prior_outbreak,
-                     data = df_model, family = binomial, method = "REML")
+                    ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
+                    months_suitable.both,
+                  data = df_model, family = binomial, method = "REML")
 # saveRDS(model_clim, file = "output/model_clim.rds")
 
 
 ## Prior outbreak
 model_prior <- bam(outbreak ~ s(lon, lat, k = 400) + s(year, k = 10) + 
                      ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
-                     urban_prpn + region_comb + months_suitable.both,
+                     prior_outbreak,
                    data = df_model, family = binomial, method = "REML")
 
 # saveRDS(model_prior, file = "output/model_prior.rds")
@@ -127,7 +116,7 @@ model_prior <- bam(outbreak ~ s(lon, lat, k = 400) + s(year, k = 10) +
 ## Urbanisation
 model_urb <- bam(outbreak ~ s(lon, lat, k = 400) + s(year, k = 10) + 
                    ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
-                   region_comb + months_suitable.both + prior_outbreak,
+                   urban_prpn,
                  data = df_model, family = binomial, method = "REML")
 
 # saveRDS(model_urb, file = "output/model_urb.rds")
@@ -135,7 +124,7 @@ model_urb <- bam(outbreak ~ s(lon, lat, k = 400) + s(year, k = 10) +
 
 model_regic <- bam(outbreak ~ s(lon, lat, k = 400) + s(year, k = 10) + 
                      ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
-                     urban_prpn + months_suitable.both + prior_outbreak,
+                     region_comb,
                     data = df_model, family = binomial, method = "REML")
 
 # saveRDS(model_regic, file = "output/model_regic.rds")
