@@ -1,6 +1,6 @@
 # Dengue_expansion_paper
  
-Data and `R` code to support Lee *et al.*, (in prep.). The impact of climate suitability, urbanisation, and connectivity on the expansion of the dengue fever transmission zone in 21st century Brazil.
+Data and `R` code to support Lee *et al.*, (in prep.). The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil.
 
 
 To cite this repo:
