@@ -8,7 +8,7 @@
 #### Load packages ####
 pacman::p_load(tidyverse, data.table, sf, geofacet, cowplot, geobr,
                ggthemes, ggdist, gghalves, geobr, ggrepel)
-
+sf_use_s2(FALSE)
 
 #### Load data ####
 ## Monthly regional data
@@ -20,7 +20,7 @@ df_year <- fread("data/df_model.csv")
 
 
 ## Monthly climate state data
-df_tmean <- fread("data/tmean_month_state.csv", encoding = "Latin-1")
+df_climate <- fread("data/climate_month_state.csv", encoding = "Latin-1")
 
 
 ## Shapefile
@@ -97,11 +97,11 @@ ggsave(state_map, filename = "output/state_map.png")
 
 #### Climate plots ####
 ## State monthly tmean geofacet  (Figure S2)
-df_tmean_grid <- df_tmean %>%
+df_climate_grid <- df_climate %>%
   full_join(., grid_br, by = c("state_code" = "code_num")) 
 
 
-tmean_heat <- ggplot(data = df_tmean_grid, 
+tmean_heat <- ggplot(data = df_climate_grid, 
                      aes(x = month, y = year, fill = tmean)) +
   geom_raster() +
   ylab("Year") + 
@@ -173,6 +173,70 @@ suitable_diff <- ggplot(data = df_suitable_diff) +
   theme_void()
 
 ggsave(suitable_diff, filename = "output/era_suit_diff.png")
+
+
+## State monthly scPDSI geofacet  (Figure M1)
+pdsi_heat <- ggplot(data = df_climate_grid, 
+                     aes(x = month, y = year, fill = pdsi)) +
+  geom_raster() +
+  ylab("Year") + 
+  xlab("Month") + 
+  scale_fill_distiller(name = "scPDSI", palette = "BrBG",
+                       direction = 1) + 
+  scale_x_continuous(breaks = c(1, 4, 7, 10), 
+                     labels = c("Jan", "Apr", "Jul", "Oct"), expand = c(0, 0)) +
+  scale_y_continuous(breaks = seq(2000, 2020, by = 5), expand = c(0, 0)) +
+  expand_limits(fill = c(-5,5)) +
+  theme_bw() + 
+  # using name intead of State
+  facet_geo(~name, grid = grid_br) +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 15),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 15),
+        strip.text.x = element_text(size = 15))
+
+ggsave(pdsi_heat, filename = "output/pdsi_heat.png",
+       height = 20, width = 20)
+
+
+## Number of months wet (scPDSI > 4) 
+df_wet <- df_year %>%
+  mutate(decade = factor(ifelse(year %in% 2001:2010, "2001 - 2010", 
+                                ifelse(year %in% 2011:2020, "2011 - 2020", NA)))) %>%
+  group_by(municip_code_ibge, decade) %>%
+  summarise(months_wet = mean(months_wet)) %>%
+  ungroup() %>%
+  left_join(., shp_parent, by = "municip_code_ibge") %>%
+  st_as_sf()
+
+
+
+## Difference in months extremely wet (Figure M2)
+df_wet_diff <- spread(st_drop_geometry(df_wet), decade, months_wet) %>%
+  left_join(., shp_parent, by = "municip_code_ibge") 
+
+names(df_wet_diff)[names(df_wet_diff)=="2001 - 2010"] <- "dec1"
+names(df_wet_diff)[names(df_wet_diff)=="2011 - 2020"] <- "dec2"
+
+df_wet_diff <- mutate(df_wet_diff,
+                      wet_diff = dec2 - dec1,
+                      wet_diff_na = ifelse(wet_diff == 0, NA, wet_diff)) %>%
+  # Remove FdN to avoid extra wide map
+  filter(municip_code_ibge != 2605459) %>%
+  st_as_sf()
+
+
+wet_diff <- ggplot(data = df_wet_diff) +
+  geom_sf(aes(fill = wet_diff_na), lwd = .05) +
+  scale_fill_distiller(name = "Change in \nmonths wet",
+                       palette = "PiYG", na.value = "white") +
+  expand_limits(fill = c(1, -1)) +
+  coord_sf(datum = NA) +
+  theme_void()
+
+ggsave(wet_diff, filename = "output/wet_diff.png")
+
 
 
 #### Census plots ####
