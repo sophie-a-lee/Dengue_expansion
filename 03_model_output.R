@@ -18,9 +18,7 @@ df_year <- fread("data/df_model.csv")
 
 
 df_model <- df_year %>%
-  mutate(# Rearrange REGIC to set local centre as reference
-    regic07_relevel = -level07_acpnum + 6,
-    regic18_relevel = -level18_num + 6,
+  mutate(# Recode REGIC to set local centre as reference
     regic_comb = factor(ifelse(year %in% 2001:2010, regic07_relevel, 
                                regic18_relevel),
                         levels = 1:5,
@@ -28,19 +26,7 @@ df_model <- df_year %>%
                                    "Zone centre",
                                    "Sub-regional centre",
                                    "Regional capital",
-                                   "Metropolis")),
-    # Use urban proportion, 00 for 2001 - 2009 + 10 for 2010 - 2020 (unless mising in 2000)
-    urban_prpn = ifelse(!is.na(urban00) & urban00 != 0, 
-                        ifelse(year %in% 2001:2009, (urban00/100), 
-                               (urban10/100)), (urban10/100)),
-    prior_outbreak = factor(prior_outbreak, levels = 0:1,
-                            labels =  c("No", "Yes")),
-    outbreak_prevyr = factor(outbreak_lag1, levels = 0:1,
-                             labels =  c("No", "Yes"))) %>%
-  dplyr::select(municip_code_ibge, year, lon, lat, outbreak, outbreak100,
-                regic_comb, urban_prpn, months_suitable.aeg, months_suitable.both,
-                prior_outbreak, outbreak_prevyr) %>%
-  drop_na()
+                                   "Metropolis"))) 
 
 
 ## Shapefile
@@ -69,11 +55,13 @@ model_full <- readRDS("output/model_full.rds")
 
 ## Sensitivity analysis - different variable options
 model_full100 <- readRDS("output/model_full100.rds")
-model_outbreak <- readRDS("output/model_outbreak.rds")
+model_full_perc75 <- readRDS("output/model_perc75.rds")
 model_aeg <- readRDS("output/model_aeg.rds")
+model_wet <- readRDS("output/model_wet.rds")
 
-## Sensistivity analysis - remove each variable in turn
-model_clim <- readRDS("output/model_clim.rds")
+
+## Sensitivity analysis - remove each variable in turn
+model_temp <- readRDS("output/model_temp.rds")
 model_prior <- readRDS("output/model_prior.rds")
 model_urb <- readRDS("output/model_urb.rds")
 model_regic <- readRDS("output/model_regic.rds")
@@ -95,8 +83,10 @@ n.sims <- 1000
 
 betas_full <- rmvn(n.sims, coef(model_full), model_full$Vp)
 betas_full100 <- rmvn(n.sims, coef(model_full100), model_full100$Vp)
+betas_perc75 <- rmvn(n.sims, coef(model_full_perc75), model_full_perc75$Vp)
 betas_aeg <- rmvn(n.sims, coef(model_aeg), model_aeg$Vp)
-betas_outbreak <- rmvn(n.sims, coef(model_outbreak), model_outbreak$Vp)
+betas_wet <- rmvn(n.sims, coef(model_wet), model_wet$Vp)
+
 
 
 ## Estimate beta mean and 95% CI (Table 1 & Table S2)
@@ -105,7 +95,8 @@ beta_ci <- function(model, betas) {
   names(beta_ci) <- gsub("[[:punct:][:blank:]]+","", names(model$coefficients))
   
   beta_ci <- beta_ci %>%
-    summarise(across(2:8, list(mean = mean, lower = ~quantile(.x, 0.025), upper = ~quantile(.x, 0.975)),
+    summarise(across(2:8, list(mean = mean, lower = ~quantile(.x, 0.025), 
+                               upper = ~quantile(.x, 0.975)),
                      names = "{.col}.fn{.fn}")) %>%
     mutate(across(everything(), ~exp(.x)))
   
@@ -148,8 +139,9 @@ beta_plot_full <- ggplot(data = beta_ci_full, aes(Covariate)) +
   geom_linerange(aes(ymin = LCI, ymax = UCI, colour = Covariate), lwd = 1,
                  position = position_dodge(width = 0.5)) +
   scale_x_discrete(name = "Model covariate",
-                   labels = c("Months suitable", "Prior outbreak: Yes", "Metropolis", "Regional capital",
-                              "Sub-regional centre", "Zone centre", "Urbanisation")) +
+                   labels = c("Months suitable", "Prior outbreak: Yes", "Metropolis", 
+                              "Regional capital", "Sub-regional centre", 
+                              "Zone centre", "Urbanisation")) +
   scale_colour_manual(values = c("#ff0054", "#390099", rep("#9e0059", 4), "#197278")) +
   coord_flip() + 
   scale_y_continuous(name = "Coefficient estimate (aOR)",
@@ -169,11 +161,53 @@ ggsave(beta_plot_full, filename = "output/beta_ci_full.png")
 # Medium risk model (outbreak > 100)
 beta_ci_full100 <- beta_ci(model_full100, betas_full100)
 
-# Aegypti model (using different climate suitability definition)
-beta_ci_aeg <- beta_ci(model_aeg, betas_aeg)
+# 75th percentile model (outbreak > 75th percentile)
+beta_ci_perc75<- beta_ci(model_full_perc75, betas_perc75)
 
-# Prior outbreak model (considering only previous year)
-beta_ci_outbreak <- beta_ci(model_outbreak, betas_outbreak)
+
+## Plot betas from alternative thresholds (Figure S8)
+beta_thresholds <- rbind(mutate(beta_ci_full, Covariate = paste0(Covariate, "300"),
+                                Threshold = "DIR > 300"),
+                         mutate(beta_ci_full100, Covariate = paste0(Covariate, "100"),
+                                Threshold = "DIR > 100"),
+                         mutate(beta_ci_perc75, Covariate = paste0(Covariate, "75"),
+                                Threshold = "75th percentile"))
+
+
+beta_comp_plot <- ggplot(data = beta_thresholds, aes(Covariate)) +
+  geom_hline(yintercept = 1, linetype = "dashed", colour = "grey", size = 0.5) +
+  geom_point(aes(x = Covariate, y = Mean, colour = Threshold), shape = 16, 
+             size = 2, position = position_dodge(width = 0.5)) +
+  geom_linerange(aes(ymin = LCI, ymax = UCI, colour = Threshold), lwd = 1,
+                 position = position_dodge(width = 0.5)) +
+  scale_x_discrete(name = "Model covariate",
+                   labels = c("", "Months suitable", "", 
+                              "", "Prior outbreak: Yes", "",
+                              "", "Metropolis", "",
+                              "", "Regional capital", "",
+                              "", "Sub-regional centre","",
+                              "", "Zone centre", "", 
+                              "", "Urbanisation", "")) +
+  scale_colour_manual(values = c("#390099", "#9e0059", "#197278")) +
+  coord_flip() + 
+  scale_y_continuous(name = "Coefficient estimate (aOR)",
+                     position = "right",
+                     expand = c(0,0), limits = c(.8, 4)) +
+  theme_classic() +
+  theme(plot.margin = unit(c(1,1,1,1),"cm"),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title = element_text(size = 20),
+        axis.text = element_text(size = 15))  
+
+threshold_leg <- get_legend(beta_comp_plot)
+
+beta_comp_plot <- plot_grid(beta_comp_plot + theme(legend.position = "none"),
+                            threshold_leg,
+                            rel_widths = c(3, .4))
+
+ggsave(beta_comp_plot, filename = "output/beta_comp_plot.png",
+       width = 10, height = 5)
 
 
 #### Plot smooth functions ####
@@ -342,15 +376,15 @@ df_model$regic_full.diff <- regic_full_diff.med
 
 
 # Number of months suitable
-smooth_clim <- smooth_estimates(model_clim, df_model)
+smooth_temp <- smooth_estimates(model_temp, df_model)
 
-clim_full_diff <- abs(smooth_clim) - abs(smooth_base)
+temp_full_diff <- abs(smooth_temp) - abs(smooth_base)
 
-clim_full_diff.med <- apply(clim_full_diff, 1, median)
-clim_full_diff.lq <- apply(clim_full_diff, 1, quantile, .25)
-clim_full_diff.uq <- apply(clim_full_diff, 1, quantile, .75)
+temp_full_diff.med <- apply(temp_full_diff, 1, median)
+temp_full_diff.lq <- apply(temp_full_diff, 1, quantile, .25)
+temp_full_diff.uq <- apply(temp_full_diff, 1, quantile, .75)
 
-df_model$clim_full.diff <- clim_full_diff.med
+df_model$temp_full.diff <- temp_full_diff.med
 
 
 ## Join the differences to map and plot differences per year
@@ -374,7 +408,7 @@ base_full_comp <- left_join(df_model, shp_parent, by = "municip_code_ibge") %>%
 # 
 # for(i in min(base_full_comp$year):max(base_full_comp$year)) {
 #   base_full_map <- ggplot(data = base_full_comp[base_full_comp$year == i,]) +
-#     geom_sf(aes(fill = clim_full.diff), lwd = .05) +
+#     geom_sf(aes(fill = temp_full.diff), lwd = .05) +
 #     scale_fill_gradient2(name = "Difference in\nsmooth terms", low = "#4d9221", 
 #                          mid = "white", high = "#c51b7d", midpoint = 0) +
 #     expand_limits(fill = c(-4, 4)) +
@@ -382,7 +416,7 @@ base_full_comp <- left_join(df_model, shp_parent, by = "municip_code_ibge") %>%
 #     facet_wrap(~year) 
 #   
 #   ggsave(base_full_map, 
-#          filename = paste0("output/full_clim_comp", i, ".png"))
+#          filename = paste0("output/full_temp_comp", i, ".png"))
 # }
 # 
 # 
@@ -415,7 +449,7 @@ base_full_comp <- left_join(df_model, shp_parent, by = "municip_code_ibge") %>%
 
 ## Plot median over time period 
 full_cov_comp_av <- group_by(df_model, municip_code_ibge) %>%
-  summarise(clim_med = median(clim_full.diff),
+  summarise(temp_med = median(temp_full.diff),
             urb_med = median(urb_full.diff),
             regic_med = median(regic_full.diff),
             prior_med = median(prior_full.diff)) %>%
@@ -424,15 +458,15 @@ full_cov_comp_av <- group_by(df_model, municip_code_ibge) %>%
   st_as_sf()
 
 
-# Climate (Figure 9a)
-clim_diff_med_map <- ggplot(data = full_cov_comp_av) +
-  geom_sf(aes(fill = clim_med), lwd = .05) +
+# Temperature (Figure 9a)
+temp_diff_med_map <- ggplot(data = full_cov_comp_av) +
+  geom_sf(aes(fill = temp_med), lwd = .05) +
   scale_fill_gradient2(name = "Difference in\nsmooth terms", low = "#4d9221", 
                        mid = "white", high = "#c51b7d", midpoint = 0) +
   expand_limits(fill = c(-3, 3)) +
   theme_void() 
 
-ggsave(clim_diff_med_map, filename = "output/clim_diff_av.png")
+ggsave(temp_diff_med_map, filename = "output/temp_diff_av.png")
 
 
 # Prior outbreak (Figure 9b)
@@ -473,8 +507,8 @@ ggsave(regic_diff_med_map, filename = "output/regic_diff_av.png")
 sum(beta_full_comp_av$diff_med <0)/
   length(unique(beta_full_comp_av$municip_code_ibge)) 
 
-# Climate vs base
-sum(full_cov_comp_av$clim_med < 0)/
+# Temperature vs base
+sum(full_cov_comp_av$temp_med < 0)/
   length(unique(full_cov_comp_av$municip_code_ibge)) * 100 # 91.16%
 
 #  Prior vs base
@@ -490,21 +524,39 @@ sum(full_cov_comp_av$regic_med < 0)/
   length(unique(full_cov_comp_av$municip_code_ibge)) * 100 # 45.08%
 
 
-#### Obtain predictions of the probability of an outbreak ####
-## Use linear prediction matrix and parameter simulations to estimate posterior mean
-mean_prob <- exp(model_mat.full %*% t(betas_full))/(1 + exp(model_mat.full %*% t(betas_full)))
+#### Compare model fit between threshold models (Figure S7) ####
+## Obtain predictions of the probability of an outbreak 
+model_predict <- function(model, betas) {
   
-## Simulate from the posterior distribution
-preds <- apply(mean_prob, 1, function(x){rbinom(length(x), size = 1, prob = x)})
+  model_mat <- predict(object = model, newdata = df_model, type = "lpmatrix")
   
-## Obtain mean probability
-mean_pred <- apply(preds, 2, mean)
+  ## Use linear prediction matrix and parameter simulations to estimate posterior mean
+  mean_prob <- exp(model_mat %*% t(betas))/(1 + exp(model_mat %*% t(betas)))
+  
+  ## Simulate from the posterior distribution
+  preds <- apply(mean_prob, 1, function(x){rbinom(length(x), size = 1, prob = x)})
+  
+  ## Obtain mean probability
+  mean_pred <- apply(preds, 2, mean)
+  
+  return(mean_pred)
+}
+
+
+model_full_pred <- model_predict(model_full, betas_full)
+model_full100_pred <- model_predict(model_full100, betas_full100)
+model_perc75_pred <- model_predict(model_full_perc75, betas_perc75)
+
   
 ## Convert into a dataset to plot  
 predictions <- data.table(municip_code_ibge = df_model$municip_code_ibge,
                           year = df_model$year,
-                          outbreak_obs = df_model$outbreak,
-                          prob_pred = mean_pred)  %>%
+                          outbreak_obs300 = df_model$outbreak_fix,
+                          outbreak_obs100 = df_model$outbreak_fix100,
+                          outbreak_obs_perc75 =  df_model$outbreak_perc75,
+                          prob_pred300 = model_full_pred,
+                          prob_pred100 = model_full100_pred,
+                          prob_pred_perc75 = model_perc75_pred)  %>%
   left_join(., shp_parent, by = "municip_code_ibge") %>%
   st_as_sf()
 
@@ -523,22 +575,45 @@ ggsave(pred_year_map, filename = "output/pred_year_maps.png")
 
 
 #### Model checking using the ROC curve ####
-roc_obj <- roc(predictions$outbreak_obs, predictions$prob_pred,
+roc_obj300 <- roc(predictions$outbreak_obs300, predictions$prob_pred300,
+               auc = T, ci = T, plot = T)
+roc_obj100 <- roc(predictions$outbreak_obs100, predictions$prob_pred100,
+               auc = T, ci = T, plot = T)
+roc_obj75 <- roc(predictions$outbreak_obs_perc75, predictions$prob_pred_perc75,
                auc = T, ci = T, plot = T)
 
-## Plot ROC curve (Figure S9) ##
-roc_curve <- ggroc(roc_obj) +
-  geom_abline(intercept = 1, slope = 1, linetype = "dashed") +
+roc_obj <- data.table(roc300_sens = roc_obj300$sensitivities,
+                      roc300_spec = 1 - roc_obj300$specificities,
+                      roc100_sens = roc_obj100$sensitivities,
+                      roc100_spec = 1 - roc_obj100$specificities,
+                      roc75_sens = roc_obj75$sensitivities,
+                      roc75_spec = 1 - roc_obj75$specificities)
+
+## Plot ROC curve (Figure S7) ##
+roc_curve <- ggplot(data = roc_obj) +
+  geom_line(aes(x = roc300_spec,  y = roc300_sens)) +
+  geom_line(aes(x = roc100_spec,  y = roc100_sens), linetype = "dashed",
+            col = "red") +
+  geom_line(aes(x = roc75_spec,  y = roc75_sens), linetype = "dotdash",
+            col = "blue") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
   labs(x = "True negative rate", y = "True positive rate") +
   theme_light()
 
 ggsave(roc_curve, filename = "output/ROC_curve.png")
 
 
-## Calculate area under the ROC  curve (with confidence interval)
-auc(roc_obj) 
-ci.auc(roc_obj)
+## Calculate Brier scores (Table S3)
+mean((predictions$prob_pred300 - predictions$outbreak_obs300)^2)
+mean((predictions$prob_pred100 - predictions$outbreak_obs100)^2)
+mean((predictions$prob_pred_perc75 - predictions$outbreak_obs_perc75)^2)
 
+# Extremely wet model
+prob_pred_wet <- model_predict(model_wet, betas_wet)
+
+roc(predictions$outbreak_obs300, prob_pred_wet,
+    auc = T, ci = T, plot = T)
+mean((prob_pred_wet - predictions$outbreak_obs300)^2)
 
 ## Plot average probability 2001 - 2010 vs 2011 - 2020 
 predictions_decade <- st_drop_geometry(predictions) %>%

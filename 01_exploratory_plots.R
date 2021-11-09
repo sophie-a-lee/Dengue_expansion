@@ -10,6 +10,7 @@ pacman::p_load(tidyverse, data.table, sf, geofacet, cowplot, geobr,
                ggthemes, ggdist, gghalves, geobr, ggrepel)
 sf_use_s2(FALSE)
 
+
 #### Load data ####
 ## Monthly regional data
 df_month <- fread("data/dir_month_region.csv")
@@ -653,3 +654,28 @@ first_outbreak_decade <- plot_grid(first_outbreak_decade, outbreak_leg,
 ggsave(first_outbreak_decade, filename = "output/first_outbreak_decade.png",
        height = 5, width = 10)
 
+
+#### Plot 75th percentile outbreak threshold (Figure M) ####
+df_cutoff <- df_year %>% 
+  group_by(municip_code_ibge) %>% 
+  summarise(perc_75 = quantile(DIR_year, .75),
+            pop_mean = mean(population)) %>% 
+  ungroup() %>% 
+  # Add minimum cutoff (5 cases) 
+  mutate(DIR_5 = (5/pop_mean)*10^5,
+         perc75_cutoff = ifelse(perc_75 < DIR_5, DIR_5, perc_75)) %>% 
+  left_join(., shp_parent, by = "municip_code_ibge") %>% 
+  st_as_sf()
+
+perc75_cutoff <- ggplot(data = df_cutoff) +
+  geom_sf(aes(fill = perc75_cutoff), lwd = .05) +
+  scale_fill_gradient2_tableau("Gold-Purple Diverging", 
+                               name = "Outbreak threshold",
+                               trans = "log1p",
+                               breaks = c(0, 30, 100, 300, 1000, 3000)) +
+  # expand_limits(fill = c(0, 10000))  +
+  theme_void() +
+  theme(legend.title = element_text(size = 10),
+        legend.text = element_text(size = 10))
+
+ggsave(perc75_cutoff, filename = "output/perc75_cutoff.png")

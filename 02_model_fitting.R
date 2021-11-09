@@ -52,7 +52,7 @@ model_full <- bam(outbreak_fix ~ s(lon, lat, k = 400) + s(year, k = 10) +
 #### Add the number of extremely wet months ####
 model_wet <- bam(outbreak_fix ~ s(lon, lat, k = 400) + s(year, k = 10) + 
                  ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
-                 urban_prpn + regic_comb + months_suitable.aeg + 
+                 urban_prpn + regic_comb + months_suitable.both + 
                  prior_outbreak_fix + months_wet,
                  data = df_model, family = binomial, method = "REML")
 
@@ -75,7 +75,7 @@ model_aeg <- bam(outbreak_fix ~ s(lon, lat, k = 400) + s(year, k = 10) +
 #### Fit outbreak100 model (sensitivity analysis) ####
 model_full100 <- bam(outbreak_fix100 ~ s(lon, lat, k = 400) + s(year, k = 10) + 
                        ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
-                       urban_prpn + region_comb + months_suitable.both + prior_outbreak_fix100,
+                       urban_prpn + regic_comb + months_suitable.both + prior_outbreak_fix100,
                   data = df_model, family = binomial, method = "REML")
 
 # summary(model_full100)
@@ -86,7 +86,7 @@ model_full100 <- bam(outbreak_fix100 ~ s(lon, lat, k = 400) + s(year, k = 10) +
 #### Fit 75th percentile model (sensitivity analysis) ####
 model_full_perc75 <- bam(outbreak_perc75 ~ s(lon, lat, k = 400) + s(year, k = 10) + 
                          ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
-                         urban_prpn + region_comb + months_suitable.both + prior_outbreak_perc75,
+                         urban_prpn + regic_comb + months_suitable.both + prior_outbreak_perc75,
                        data = df_model, family = binomial, method = "REML")
 
 # summary(model_full_perc75)
@@ -96,7 +96,7 @@ model_full_perc75 <- bam(outbreak_perc75 ~ s(lon, lat, k = 400) + s(year, k = 10
 
 #### Add each covariate in turn (sensitivity analysis) ####
 ## Months suitable
-model_clim <- bam(outbreak_fix ~ s(lon, lat, k = 400) + s(year, k = 10) + 
+model_temp <- bam(outbreak_fix ~ s(lon, lat, k = 400) + s(year, k = 10) + 
                     ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
                     months_suitable.both,
                   data = df_model, family = binomial, method = "REML")
@@ -129,43 +129,4 @@ model_regic <- bam(outbreak_fix ~ s(lon, lat, k = 400) + s(year, k = 10) +
 # saveRDS(model_regic, file = "output/model_regic.rds")
 
 
-
-#### Compare full and baseline models with AIC, AUC and Brier score ####
-## Table S2
-model_checks <- function(model) {
-  
-  # Print model formula
-  print(model$formula)
-  
-  # Extract observed outbreak
-  outbreak_obs <- unlist(dplyr::select(model$model, starts_with("outbreak_")))
-  
-  # Print AIC
-  print(paste0("AIC = ", AIC(model)))
-  
-  # Get the predicted probabilities for each sample
-  model.pred <- predict(model, type = "response")
-  
-  # Brier score 
-  brier <- mean((model.pred - outbreak_obs)^2)
-  print(paste0("Brier score = ", brier))
-  
-  # Create ROC object for ROCR package
-  rp <- prediction(as.numeric(model.pred), as.numeric(outbreak_obs))
-  
-  # Calculate area under the curve
-  auc <- performance(rp, "auc")@y.values[[1]]
-  print(paste0("AUC = ", auc))
-  
-  # object to plot ROC curve
-  plot(performance(rp, "tpr", "fpr"))
-  
-}
-
-## Baseline model checks
-model_checks(model_base)
-
-
-## Full model checks
-model_checks(model_full)
 
