@@ -243,7 +243,7 @@ ggsave(wet_diff, filename = "output/wet_diff.png")
 #### Census plots ####
 ## Urbanisation maps (Figure S4)
 df_census <- df_year[df_year$year == 2010,] %>%
-  left_join(., shp_parent, by = c("municip_code_ibge", "municip_code")) %>%
+  left_join(., shp_parent, by = c("municip_code_ibge")) %>%
   mutate(regic07 = factor(level07_acpnum, levels = 1:5,
                           labels = c("Metropolis",
                                      "Regional capital",
@@ -597,8 +597,8 @@ ggsave(perc_region_inset, filename = "output/region_perc_inset.png",
 
 ## Year of first outbreak (Figure 5)
 df_outbreak <- df_year %>%
-  mutate(DIR_year = (dengue_year/population)*10^5) %>%
-  filter(DIR_year >= 300) %>%
+  mutate(DIR = (dengue_year/population)*10^5) %>%
+  filter(DIR >= 300) %>%
   arrange(municip_code_ibge, year) %>%
   group_by(municip_code_ibge) %>%
   mutate(first_fix = first(year)) %>%
@@ -658,7 +658,7 @@ ggsave(first_outbreak_decade, filename = "output/first_outbreak_decade.png",
 #### Plot 75th percentile outbreak threshold (Figure M) ####
 df_cutoff <- df_year %>% 
   group_by(municip_code_ibge) %>% 
-  summarise(perc_75 = quantile(DIR_year, .75),
+  summarise(perc_75 = quantile(DIR, .75),
             pop_mean = mean(population)) %>% 
   ungroup() %>% 
   # Add minimum cutoff (5 cases) 

@@ -18,15 +18,18 @@ df_year <- fread("data/df_model.csv")
 
 
 df_model <- df_year %>%
-  mutate(# Recode REGIC to set local centre as reference
-    regic_comb = factor(ifelse(year %in% 2001:2010, regic07_relevel, 
-                               regic18_relevel),
-                        levels = 1:5,
-                        labels = c("Local centre",
-                                   "Zone centre",
-                                   "Sub-regional centre",
-                                   "Regional capital",
-                                   "Metropolis"))) 
+  mutate(regic07_relevel = -level07_acpnum + 6,
+         regic18_relevel = -level18_num + 6,
+         regic_comb = factor(ifelse(year %in% 2001:2009, regic07_relevel, regic18_relevel),
+                             levels = 1:5,
+                             labels = c("Local centre",
+                                        "Zone centre",
+                                        "Sub-regional centre",
+                                        "Regional capital",
+                                        "Metropolis")),
+         urban = ifelse(urban00 != 0 & !is.na(urban00) & year %in% 2001:2009, 
+                        urban00, urban10),
+         urban_prpn = urban/100)
 
 
 ## Shapefile
@@ -49,22 +52,22 @@ shp_parent <- left_join(shp, parent_conv,
   mutate(municip_code = as.numeric(substr(municip_code_ibge, 1, 6)))
 
 
-#### Load model objects ####
-model_base <- readRDS("output/model_base.rds")
-model_full <- readRDS("output/model_full.rds")
-
-## Sensitivity analysis - different variable options
-model_full100 <- readRDS("output/model_full100.rds")
-model_full_perc75 <- readRDS("output/model_perc75.rds")
-model_aeg <- readRDS("output/model_aeg.rds")
-model_wet <- readRDS("output/model_wet.rds")
-
-
-## Sensitivity analysis - remove each variable in turn
-model_temp <- readRDS("output/model_temp.rds")
-model_prior <- readRDS("output/model_prior.rds")
-model_urb <- readRDS("output/model_urb.rds")
-model_regic <- readRDS("output/model_regic.rds")
+# #### Load model objects ####
+# model_base <- readRDS("output/model_base.rds")
+# model_full <- readRDS("output/model_full.rds")
+# 
+# ## Sensitivity analysis - different variable options
+# model_full100 <- readRDS("output/model_full100.rds")
+# model_full_perc75 <- readRDS("output/model_perc75.rds")
+# model_aeg <- readRDS("output/model_aeg.rds")
+# model_wet <- readRDS("output/model_wet.rds")
+# 
+# 
+# ## Sensitivity analysis - remove each variable in turn
+# model_temp <- readRDS("output/model_temp.rds")
+# model_prior <- readRDS("output/model_prior.rds")
+# model_urb <- readRDS("output/model_urb.rds")
+# model_regic <- readRDS("output/model_regic.rds")
 
 
 set.seed(123)
@@ -91,11 +94,15 @@ betas_wet <- rmvn(n.sims, coef(model_wet), model_wet$Vp)
 
 ## Estimate beta mean and 95% CI (Table 1 & Table S2)
 beta_ci <- function(model, betas) {
+  
+  # Extract number of fixed covariates
+  ncov <- min(which(substr(names(coef(model)), 1, 2) == "s(")) - 1
+  
   beta_ci <- as_tibble(betas) 
   names(beta_ci) <- gsub("[[:punct:][:blank:]]+","", names(model$coefficients))
   
   beta_ci <- beta_ci %>%
-    summarise(across(2:8, list(mean = mean, lower = ~quantile(.x, 0.025), 
+    summarise(across(2:ncov, list(mean = mean, lower = ~quantile(.x, 0.025), 
                                upper = ~quantile(.x, 0.975)),
                      names = "{.col}.fn{.fn}")) %>%
     mutate(across(everything(), ~exp(.x)))
@@ -265,6 +272,7 @@ ggsave(spat_smooth_plot, filename = "output/spat_smooth_plot.png",
 #### Compare smooth terms between models ####
 ## Function to obtain smooth functions
 smooth_estimates <- function(model, data) {
+  
   # Obtain simulations from beta posterior distributions (only keep smooth functions)
   betas <- rmvn(1000, coef(model), model$Vp) 
   betas_smooth <- betas[ , substr(names(coefficients(model)), 1, 2) %in%

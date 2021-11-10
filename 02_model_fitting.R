@@ -6,7 +6,7 @@
 
 
 #### Load packages ####
-pacman::p_load(tidyverse, data.table, sf, mgcv, ROCR)
+pacman::p_load(tidyverse, data.table, sf, mgcv)
 
 
 #### Load data ####
@@ -17,15 +17,18 @@ df_year <- fread("data/df_model.csv")
 #### Create model dataset ####
 ## Create model variables
 df_model <- df_year %>%
-  mutate(# Recode REGIC to set local centre as reference
-         regic_comb = factor(ifelse(year %in% 2001:2010, regic07_relevel, 
-                                    regic18_relevel),
+  mutate(regic07_relevel = -level07_acpnum + 6,
+         regic18_relevel = -level18_num + 6,
+         regic_comb = factor(ifelse(year %in% 2001:2009, regic07_relevel, regic18_relevel),
                              levels = 1:5,
                              labels = c("Local centre",
                                         "Zone centre",
                                         "Sub-regional centre",
                                         "Regional capital",
-                                        "Metropolis")))
+                                        "Metropolis")),
+         urban = ifelse(urban00 != 0 & !is.na(urban00) & year %in% 2001:2009, 
+                        urban00, urban10),
+         urban_prpn = urban/100)
    
 
 #### Fit baseline model (with only spatio-temporal smooths) ####
