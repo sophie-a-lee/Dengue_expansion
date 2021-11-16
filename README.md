@@ -1,6 +1,6 @@
 # Dengue_expansion_paper
  
-Data and `R` code to support Lee *et al.*, (in prep.). The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil.
+Data and `R` code to support Lee *et al.*, (under review). The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil.
 
 
 To cite this repo:
@@ -17,7 +17,7 @@ A description of each file and folder is provided below:
 
   **01_exploratory_plots.R:** `R` script to explore and visualise dengue, socioeconomic, climate, and connectivity data.
 
-  **02_model_fitting.R:** `R` script used to fit spatio-temporal models.
+  **02_model_fitting.R:** `R` script to fit spatio-temporal models.
 
   **03_model_output.R:** `R` script to explore and visualise model output.
   
