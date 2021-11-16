@@ -7,7 +7,10 @@
 
 #### Load packages ####
 pacman::p_load(tidyverse, data.table, sf, geofacet, cowplot, geobr,
-               ggthemes, ggdist, gghalves, geobr, ggrepel)
+               ggthemes, gghalves, geobr, ggrepel, devtools)
+
+# Overcome issues with ggdist and sf packages
+devtools::install_github("mjskay/ggdist")
 sf_use_s2(FALSE)
 
 
