@@ -1,4 +1,4 @@
-# Dengue expansion in 21st century Brazil
+# Dengue_expansion
  
 Data and `R` code to support Lee *et al.*, (under review). The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil.
 
