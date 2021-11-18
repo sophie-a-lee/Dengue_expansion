@@ -1,15 +1,15 @@
-# Dengue_expansion_paper
+# Dengue expansion in 21st century Brazil
  
 Data and `R` code to support Lee *et al.*, (under review). The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil.
 
 
 To cite this repo:
 
-TBD
+[![DOI](https://zenodo.org/badge/383112412.svg)](https://zenodo.org/badge/latestdoi/383112412)
 
 --------------------------------------------------------------------------------
 
-This modelling study aims to quantify the expansion of the dengue transmission zone in Brazil and understand the drivers of this expansion using spatio-temporal additive models.
+Dengue is hyperendemic in Brazil, with outbreaks affecting all regions. Previous studies identified geographical barriers to dengue transmission in Brazil, beyond which certain areas, such as South Brazil and the Amazon rainforest, were relatively protected from outbreaks. Recent data shows these barriers are being eroded. In this study, we explore the drivers of this expansion and identify the current limits to the dengue transmission zone.
 
 --------------------------------------------------------------------------------
 
