@@ -1,11 +1,11 @@
 # Dengue_expansion
  
-Data and `R` code to support Lee *et al.*, (under review). The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil.
+Data and `R` code to support Lee S.A. *et al.*, (under review). The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil.
 
 
 To cite this repo:
 
-Sophie A Lee, Theodoros Economou, Rafael de Castro Catão, Christovam Barcellos, & Rachel Lowe. (2021). Data and R code to accompany 'The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil' (version 1.0.0) (V1.0.0). Zenodo. 
+Lee S.A. *et al* (2021). Data and R code to accompany 'The impact of climate suitability, urbanisation, and connectivity on the expansion of dengue in 21st century Brazil' (version 1.0.0) (V1.0.0). Zenodo. 
 
 [![DOI](https://zenodo.org/badge/383112412.svg)](https://zenodo.org/badge/latestdoi/383112412)
 
