@@ -17,7 +17,7 @@ model_full <- readRDS("output/model_full.rds")
 
 ## Sensitivity analysis - different variable options
 model_full100 <- readRDS("output/model_full100.rds")
-model_full_perc75 <- readRDS("output/model_perc75.rds")
+model_full_perc75 <- readRDS("output/model_full_perc75.rds")
 model_aeg <- readRDS("output/model_aeg.rds")
 model_wet <- readRDS("output/model_wet.rds")
 
