@@ -85,7 +85,7 @@ model_temp <- bam(outbreak_fix ~ s(lon, lat, k = 400) + s(year, k = 10) +
                     ti(lon, lat,  year, d = c(2, 1), k = c(100, 8)) +
                     months_suitable.both,
                   data = df_model, family = binomial, method = "REML")
-saveRDS(model_clim, file = "output/model_clim.rds")
+saveRDS(model_clim, file = "output/model_temp.rds")
 
 
 ## Prior outbreak
