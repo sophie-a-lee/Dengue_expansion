@@ -22,7 +22,7 @@ model_aeg <- readRDS("output/model_aeg.rds")
 model_wet <- readRDS("output/model_wet.rds")
 
 
-## Sensitivity analysis - remove each variable in turn
+## Sensitivity analysis - add each variable in turn
 model_temp <- readRDS("output/model_temp.rds")
 model_prior <- readRDS("output/model_prior.rds")
 model_urb <- readRDS("output/model_urb.rds")
@@ -230,8 +230,8 @@ spat_est01.full <- spat_est.full[df_model$year == 2001, ]
 mean_spat.full <- apply(spat_est01.full, 1, mean)
 
 # Create 95% credible interval by taking 2.5th and 97.5th percentiles
-lci_spat.full <- apply(spat_est01.full, 1, quantile, probs=0.025)
-uci_spat.full <- apply(spat_est01.full, 1, quantile, probs=0.975)
+lci_spat.full <- apply(spat_est01.full, 1, quantile, probs=0.025, na.rm = T)
+uci_spat.full <- apply(spat_est01.full, 1, quantile, probs=0.975, na.rm = T)
 
 
 # Join random effects to model df + plot on a map

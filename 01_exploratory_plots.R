@@ -150,7 +150,7 @@ suitable_diff <- ggplot(data = df_suitable_diff) +
 ggsave(suitable_diff, filename = "output/era_suit_diff.png")
 
 
-## State monthly scPDSI set out in shape of Brazil (using grid_br)  (Figure M1)
+## State monthly scPDSI set out in shape of Brazil (using grid_br)  (Fig A in S1 Text)
 pdsi_heat <- ggplot(data = df_climate_grid, 
                      aes(x = month, y = year, fill = pdsi)) +
   geom_raster() +
@@ -187,7 +187,7 @@ df_wet <- df_year %>%
   st_as_sf()
 
 
-## Difference in months extremely wet (Figure M2)
+## Difference in months extremely wet (Fig B in S1 Text)
 # Convert decade df into wide format (variable per decade)
 df_wet_diff <- spread(st_drop_geometry(df_wet), 
                       decade, months_wet) %>%
@@ -652,7 +652,7 @@ first_outbreak20 <- ggplot(data = df_outbreak) +
   expand_limits(fill = c(2001, 2020)) +
   # Add municipalities without outbreaks to legend
   scale_colour_manual(values = NA) +
-  guides(colour = guide_legend("No outbreaks")) +
+  guides(colour = guide_legend("No \noutbreaks")) +
   theme_void() +
   theme(legend.title = element_text(size = 15),
         legend.text = element_text(size = 10))
@@ -669,7 +669,7 @@ first_outbreak10 <- ggplot(data = df_outbreak) +
   # Ensure legends are on same scale
   expand_limits(fill = c(2001, 2020)) +
   scale_colour_manual(values = NA) +
-  guides(colour = guide_legend("No outbreaks")) +
+  guides(colour = guide_legend("No \noutbreaks")) +
   theme_void() +
   theme(legend.title = element_text(size = 15),
         legend.text = element_text(size = 10))
@@ -691,7 +691,7 @@ first_outbreak_decade <- plot_grid(first_outbreak_decade, outbreak_leg,
 
 
 ggsave(first_outbreak_decade, filename = "output/first_outbreak_decade.png",
-       height = 5, width = 10)
+       height = 5, width = 12)
 
 
 #### Plot 75th percentile outbreak threshold (Figure M) ####
